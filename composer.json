@@ -1,0 +1,22 @@
+{
+    "name": "emsifa/laci",
+    "description": "PHP JSON flat file DBMS",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Muhammad Syifa",
+            "email": "emsifa@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Emsifa\\Laci\\": "src/"
+        }
+    },
+    "require": {
+    },
+    "require-dev": {
+        "phpunit/phpunit": "4.*"
+    }
+}

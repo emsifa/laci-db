@@ -1,0 +1,396 @@
+<?php
+
+namespace Emsifa\Laci;
+
+use Closure;
+use Emsifa\Laci\Exceptions\DirectoryNotFoundException;
+use Emsifa\Laci\Exceptions\InvalidJsonException;
+
+class Collection
+{
+
+    const KEY_ID = '_id';
+    const KEY_OLD_ID = '_old';
+
+    const UPDATING  = 'updating';
+    const UPDATED   = 'updated';
+    const INSERTING = 'inserting';
+    const INSERTED  = 'inserted';
+    const DELETING  = 'deleting';
+    const DELETED   = 'deleted';
+    const CHANGED   = 'changed';
+
+    protected $filepath = null;
+
+    protected $query = null;
+
+    protected $resolver = null;
+
+    protected $events = [];
+
+    protected $transactionMode = false;
+
+    protected $transactionData = null;
+
+    public function __construct($filepath, array $options = array())
+    {
+        $this->filepath = $filepath;
+        $this->options = array_merge([
+            'save_format' => JSON_PRETTY_PRINT
+        ], $options);
+    }
+
+    public function isModeTransaction()
+    {
+        return true === $this->transactionMode;
+    }
+
+    public function begin()
+    {
+        $this->transactionMode = true;
+    }
+
+    public function commit()
+    {
+        $this->transactionMode = false;
+        return $this->save($this->transactionData);
+    }
+
+    public function rollback()
+    {
+        $this->transactionMode = false;
+        $this->transactionData = null;
+    }
+
+    public function truncate()
+    {
+        return $this->persists([]);
+    }
+
+    public function on($event, callable $callback)
+    {
+        if (!isset($this->events[$event])) {
+            $this->events[$event] = [];
+        }
+
+        $this->events[$event][] = $callback;
+    }
+
+    protected function trigger($event, array &$args)
+    {
+        $events = isset($this->events[$event])? $this->events[$event] : [];
+        foreach($events as $callback) {
+            call_user_func_array($callback, $args);
+        }
+    }
+
+    public function loadData()
+    {
+        if ($this->isModeTransaction() AND !empty($this->transactionData)) {
+            return $this->transactionData;
+        }
+
+        if (!file_exists($this->filepath)) {
+            $data = [];
+        } else {
+            $content = file_get_contents($this->filepath);
+            $data = json_decode($content, true);
+            if (is_null($data)) {
+                throw new InvalidJsonException("Failed to load data. File '{$this->filepath}' contain invalid JSON format.");
+            }
+        }
+
+        return $data;
+    }
+
+    public function setResolver(callable $resolver)
+    {
+        $this->resolver = $resolver;
+    }
+
+    public function getResolver()
+    {
+        return $this->resolver;
+    }
+
+    public function query()
+    {
+        if (!$this->query) {
+            $this->query = new Query($this);
+        }
+
+        return $this->query;
+    }
+
+    public function where($key, $operatorOrValue)
+    {
+        return call_user_func_array([$this->query(), 'where'], func_get_args());
+    }
+
+    public function filter(Closure $closure)
+    {
+        return $this->query()->filter($closure);
+    }
+
+    public function map(Closure $mapper)
+    {
+        return $this->query()->map($mapper);
+    }
+
+    public function sortBy($key, $asc = 'asc')
+    {
+        return $this->query()->sortBy($key, $asc);
+    }
+
+    public function sort(Closure $comparator)
+    {
+        return $this->query()->sort($comparator);
+    }
+
+    public function skip($offset)
+    {
+        return $this->query()->skip($offset);
+    }
+
+    public function take($limit, $offset = 0)
+    {
+        return $this->query()->take($limit, $offset);
+    }
+
+    public function all()
+    {
+        return array_values($this->loadData());
+    }
+
+    public function find($id)
+    {
+        return $this->where(static::KEY_ID, $id)->first();
+    }
+
+    public function lists($key, $resultKey = null)
+    {
+        return $this->query()->lists($key, $resultKey);
+    }
+
+    public function sum($key)
+    {
+        return $this->query()->sum($key);
+    }
+
+    public function count()
+    {
+        return $this->query()->count();
+    }
+
+    public function avg($key)
+    {
+        return $this->query()->avg($key);
+    }
+
+    public function min($key)
+    {
+        return $this->query()->min($key);
+    }
+
+    public function max($key)
+    {
+        return $this->query()->max($key);
+    }
+
+    public function insert(array $data)
+    {
+        return $this->execute($this->query(), Query::TYPE_INSERT, $data);
+    }
+
+    public function inserts(array $listData)
+    {
+        $this->begin();
+        foreach($listData as $data) {
+            $this->insert($data);
+        }
+        return $this->commit();
+    }
+
+    public function update(array $data)
+    {
+        return $this->query()->update();
+    }
+
+    public function delete()
+    {
+        return $this->query()->delete();
+    }
+
+    public function generateKey()
+    {
+        return uniqid();
+    }
+
+    public function execute(Query $query, $type, $arg = null)
+    {
+        if ($query->getCollection() != $this) {
+            throw new \InvalidArgumentException("Cannot execute query. Query is for different collection");
+        }
+
+        $this->query = null;
+
+        switch ($type) {
+            case Query::TYPE_GET: return $this->executeGet($query);
+            case Query::TYPE_SAVE: return $this->executeSave($query);
+            case Query::TYPE_INSERT: return $this->executeInsert($query, $arg);
+            case Query::TYPE_UPDATE: return $this->executeUpdate($query, $arg);
+            case Query::TYPE_DELETE: return $this->executeDelete($query);
+        }
+    }
+
+    protected function executeInsert(Query $query, array $new)
+    {
+        $data = $this->loadData();
+        $key = isset($new[static::KEY_ID])? $new[static::KEY_ID] : $this->generateKey();
+        
+        $newExtra = new ArrayExtra([]);
+        $newExtra->merge($new);
+
+        $args = [$newExtra];
+        $this->trigger(static::INSERTING, $args);
+        $data[$key] = array_merge([
+            static::KEY_ID => $key
+        ], $args[0]->toArray());
+
+        $success = $this->persists($data);
+
+        $args = [$data[$key]];
+        $this->trigger(static::INSERTED, $args);
+        
+        $args = [$data];
+        $this->trigger(static::CHANGED, $args);
+
+        return $success? $data[$key] : null;
+    }
+
+    protected function executeUpdate(Query $query, array $new)
+    {
+        $data = $this->loadData();
+
+        $args = [$query, $new];
+        $this->trigger(static::UPDATING, $args);
+        
+        $rows = $query->data();
+        $count = count($rows);
+        if (0 == $count) {
+            return true;
+        }
+        
+        $updatedData = [];
+        foreach($rows as $key => $row) {
+            $record = new ArrayExtra($data[$key]);
+            $record->merge($new);
+            $data[$key] = $record->toArray();
+
+            if (isset($new[static::KEY_ID])) {
+                $data[$new[static::KEY_ID]] = $data[$key];
+                unset($data[$key]);
+                $key = $new[static::KEY_ID];
+            }
+            $updatedData[$key] = $data[$key];
+        }
+
+        $success = $this->persists($data);
+
+        $args = [$updatedData];
+        $this->trigger(static::UPDATED, $args);
+        
+        $args = [$data];
+        $this->trigger(static::CHANGED, $args);
+        
+        return $success? $count : 0;
+    }
+
+    protected function executeDelete(Query $query)
+    {
+        $data = $this->loadData();
+
+        $args = [$query];
+        $this->trigger(static::DELETING, $args);
+
+        $rows = $query->data();
+        $count = count($rows);
+        if (0 == $count) {
+            return true;
+        }
+
+        foreach($rows as $key => $row) {
+            unset($data[$key]);
+        }
+
+        $success = $this->persists($data);
+
+        $args = [$rows];
+        $this->trigger(static::DELETED, $args);
+
+        $args = [$data];
+        $this->trigger(static::CHANGED, $args);
+
+        return $success? $count : 0;
+    }
+
+    protected function executeGet(Query $query)
+    {
+        return array_values($query->data());
+    }
+
+    protected function executeSave(Query $query)
+    {
+        $data = $this->loadData();
+        $processed = $query->data();
+        $count = count($processed);
+
+        foreach($processed as $key => $row) {
+            // update ID if there is '_old' key
+            if (isset($row[static::KEY_OLD_ID])) {
+                unset($data[$row[static::KEY_OLD_ID]]);
+            }
+            // keep ID if there is no '_id'
+            if (!isset($row[static::KEY_ID])) {
+                $row[static::KEY_ID] = $key;
+            }
+            $data[$key] = $row;
+        }
+
+        $success = $this->persists($data);
+
+        return $success? $count : 0;
+    }
+
+    public function persists(array $data)
+    {
+        if ($this->resolver) {
+            $data = array_map($this->getResolver(), $data);
+        }
+
+        return $this->save($data);
+    }
+
+    protected function save(array $data)
+    {
+        if ($this->isModeTransaction()) {
+            $this->transactionData = $data;
+            return true;
+        } else {
+            if (empty($data)) {
+                $data = new \stdClass;
+            }
+
+            $json = json_encode($data, $this->options['save_format']);
+
+            $filepath = $this->filepath;
+            $pathinfo = pathinfo($filepath);
+            $dir = $pathinfo['dirname'];
+            if (!is_dir($dir)) {
+                throw new DirectoryNotFoundException("Cannot save database. Directory {$dir} not found or it is not directory.");
+            }
+
+            return file_put_contents($filepath, $json);
+        }
+    }
+}
