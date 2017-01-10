@@ -195,7 +195,10 @@ class Query
 
     public function map(Closure $mapper)
     {
-        $this->data = array_map(function($row) use ($mapper) {
+        $keyId = $this->getCollection()->getKeyId();
+        $keyOldId = $this->getCollection()->getKeyOldId();
+
+        $this->data = array_map(function($row) use ($mapper, $keyId, $keyOldId) {
             $row = new ArrayExtra($row);
             $result = $mapper($row);
             
@@ -207,9 +210,9 @@ class Query
                 $new = null;
             }
 
-            if (is_array($new) AND isset($new[Collection::KEY_ID])) {
-                if ($row[Collection::KEY_ID] != $new[Collection::KEY_ID]) {
-                    $new[Collection::KEY_OLD_ID] = $row[Collection::KEY_ID];
+            if (is_array($new) AND isset($new[$keyId])) {
+                if ($row[$keyId] != $new[$keyId]) {
+                    $new[$keyOldId] = $row[$keyId];
                 }
             }
 

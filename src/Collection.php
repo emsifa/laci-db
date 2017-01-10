@@ -40,6 +40,16 @@ class Collection
         ], $options);
     }
 
+    public function getKeyId()
+    {
+        return static::KEY_ID;
+    }
+
+    public function getKeyOldId()
+    {
+        return static::KEY_OLD_ID;
+    }
+
     public function isModeTransaction()
     {
         return true === $this->transactionMode;
