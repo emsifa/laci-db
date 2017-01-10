@@ -187,7 +187,7 @@ $bookCollection->sort(function($a, $b) {
 $bookCollection->skip(4)->get();
 
 // select * from book.json limit 10 offset 4
-$bookCollection->limit(10, 4)->get();
+$bookCollection->take(10, 4)->get();
 ```
 
 #### Join
