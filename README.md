@@ -9,7 +9,7 @@ LaciDB - Flat File JSON DBMS
 
 LaciDB adalah flat file DBMS dengan format penyimpanan berupa JSON. Karena format JSON, LaciDB bersifat *schemaless* seperti hanya NoSQL lainnya. Sebuah record dapat memiliki kolom yang berbeda-beda.
 
-Dalam LaciDB tidak ada istilah table, yang ada adalah collection. Collection pada LaciDB mewakili sebuah file yang menyimpan banyak records.
+Dalam LaciDB tidak ada istilah table, yang ada adalah collection. Collection pada LaciDB mewakili sebuah file yang menyimpan banyak records (dalam format JSON).
 
 Nama 'Laci' sendiri diambil karena prosesnya seperti laci pada meja/lemari. Laci pada meja/lemari umumnya tidak membutuhkan kunci (autentikasi), cukup buka > ambil sesuatu dan|atau taruh sesuatu > tutup. Pada LaciDB pun seperti itu, setiap query akan membuka file > eksekusi query (select|insert|update|delete) > file ditutup.
 
@@ -25,16 +25,129 @@ LaciDB dibuat untuk:
 
 ## Cara Kerja
 
-TODOC
+Pada dasarnya LaciDB hanyalah tentang manipulasi array. Alur LaciDB pada setiap query umumnya adalah sebagai berikut:
 
-## Examples
+* Mengambil konten (JSON) dari file (`file_get_contents`)
+* Parsing JSON tersebut menjadi Array (`json_decode`)
+* Filtering: memfilter array (`array_filter` atau `array_slice`)
+* Mapping: membentuk array (`array_map`)
+* Sorting: mengurutkan hasil (`uasort`)
+* Executing: query di eksekusi berdasarkan jenis querynya (get|insert|update|delete).
 
-#### Initialize
+Berikut lebih detail terkait beberapa prosesnya:
+
+### Filtering
+
+Berikut beberapa method untuk filter collection:
+
+#### `filter(Closure $filter)`
+
+Untuk filter collection.
+
+#### `where($key, $operator, $value)`
+
+Untuk filter collection berdasarkan kondisi tertentu. Operator dapat berupa '=', '<', '<=', '>', '>=', 'in', 'not in', 'betwenn', dan 'match'. 
+
+Jika `$value` tidak didefinisikan, maka `$operator` dianggap sebagai value, dan operator yang digunakan adalah `=`. 
+
+#### `skip($offset)`
+
+Untuk filter collection pada offset tertentu.
+
+#### `take($limit, $offset = 0)`
+
+Untuk mengambil collection sebanyak `$limit` dimulai pada offset `$offset`.
+
+### Mapping
+
+Berikut beberapa method untuk mapping record:
+
+#### `map(Closure $mapper)`
+
+Untuk mapping records pada collection yang telah difilter.
+
+#### `select(array $columns)`
+
+Mapping records untuk mengambil kolom-kolom tertentu saja.
+
+#### `withOne(Collection|Query $relation, $key, $otherKey, $operator, $thisKey)`
+
+Untuk mengambil relasi 1:1.
+
+#### `withMany(Collection|Query $relation, $key, $otherKey, $operator, $thisKey)`
+
+Untuk mengambil relasi 1:n.
+
+### Executing
+
+Berikut beberapa method untuk executing:
+
+#### `get(array $columns = null)`
+
+Mengambil kumpulan records pada collection yang telah di filter dan di mapping. Jika ingin mengambil kolom tertentu definisikan kolom kedalam array `$columns`.
+
+#### `first(array $columns = null)`
+
+Mengambil (sebuah) record pada collection yang telah difilter dan di mapping. Jika ingin mengambil kolom tertentu definisikan kolom kedalam array `$columns`.
+
+#### `count()` 
+
+Mengambil banyak data dari collection yang telah difilter dan dimapping.
+
+#### `sum($key)` 
+
+Mengambil total key tertentu pada collection yang telah difilter dan dimapping.
+
+#### `avg($key)` 
+
+Mengambil rata-rata key tertentu pada collection yang telah difilter dan dimapping.
+
+#### `min($key)` 
+
+Mengambil nilai terendah dari key tertentu pada collection yang telah difilter dan dimapping.
+
+#### `max($key)` 
+
+Mengambil nilai tertinggi dari key tertentu pada collection yang telah difilter dan dimapping.
+
+#### `lists($key, $resultKey = null)` 
+
+Mengumpulkan dan mengambil key tertentu kedalam array pada collection yang telah difilter dan dimapping.
+
+#### `insert(array $data)` 
+
+Insert data baru kedalam collection.
+
+#### `inserts(array $listData)` 
+
+Insert beberapa data baru sekaligus kedalam collection. Note: `insert` dan `inserts` tidak dapat dilakukan setelah query di filter atau di mapping.
+
+#### `update(array $newData)` 
+
+Mengupdate data pada records didalam collection yang difilter dan dimapping.
+
+#### `save()` 
+
+Sama seperti update. Hanya saja `save` akan menyimpan record berdasarkan hasil mapping, bukan berdasarkan `$newData` seperti pada update.
+
+#### `delete()` 
+
+Menghapus data pada collection yang difilter dan dimapping.
+
+#### `truncate()` 
+
+Menghapus seluruh data. Tidak membutuhkan filtering dan mapping terlebih dahulu.
+
+## Contoh
+
+#### Inisialisasi
 
 ```php
 use Emsifa\Laci\Collection;
 
-$collection = new Collection(__DIR__.'/db/users.json');
+require 'vendor/autoload.php';
+
+$collection = new Collection(__DIR__.'/users.json');
 ```
 
 #### Insert Data
@@ -47,7 +160,7 @@ $user = $collection->insert([
 ]);
 ```
 
-`$user` would be something like:
+`$user` akan berupa array seperti ini:
 
 ```php
 [
@@ -58,7 +171,7 @@ $user = $collection->insert([
 ]
 ```
 
-> '_id' is uniqid()
+> '_id' adalah `uniqid()`
 
 #### Find Single Record By ID
 
@@ -152,7 +265,7 @@ $bookCollection->where('star', '>', 3)->where('author.name', 'Jane Doe')->get();
 
 > Operator can be '=', '<', '<=', '>', '>=', 'in', 'not in', 'between', 'match'.
 
-#### Implementing `OR` Using Filter
+#### Mengimplementasikan `OR` Menggunakan Filter
 
 ```php
 $bookCollection->filter(function($row) {
@@ -162,14 +275,14 @@ $bookCollection->filter(function($row) {
 
 > `$row['author.name']` is equivalent with `$row['author']['name']`
 
-#### Select Specify Keys
+#### Mengambil Kolom/Key Tertentu
 
 ```php
 // select author, title from book.json where star > 3
 $bookCollection->where('star', '>', 3)->get(['author.name', 'title']);
 ```
 
-#### Select As
+#### Alias Kolom/Key
 
 ```php
 // select author[name] as author_name, title from book.json where star > 3
@@ -225,7 +338,7 @@ $userCollection->withMany($bookCollection, 'books', 'author.email', '=', 'email'
 $bookCollection->withOne($userCollection, 'user', 'email', '=', 'author.email')->get();
 ```
 
-#### Map and Save
+#### Map & Save
 
 ```php
 $bookCollection->where('star', '>', 3)->map(function($row) {
