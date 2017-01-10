@@ -5,6 +5,28 @@ LaciDB - Flat File JSON DBMS
 [![Build Status](https://img.shields.io/travis/emsifa/laci-db.svg?style=flat-square)](https://travis-ci.org/emsifa/laci-db)
 [![License](http://img.shields.io/:license-mit-blue.svg?style=flat-square)](http://doge.mit-license.org)
 
+## Overview
+
+LaciDB adalah flat file DBMS dengan format penyimpanan berupa JSON. Karena format JSON, LaciDB bersifat *schemaless* seperti hanya NoSQL lainnya. Sebuah record dapat memiliki kolom yang berbeda-beda.
+
+Dalam LaciDB tidak ada istilah table, yang ada adalah collection. Collection pada LaciDB mewakili sebuah file yang menyimpan banyak records.
+
+Nama 'Laci' sendiri diambil karena prosesnya seperti laci pada meja/lemari. Laci pada meja/lemari umumnya tidak membutuhkan kunci (autentikasi), cukup buka > ambil sesuatu dan|atau taruh sesuatu > tutup. Pada LaciDB pun seperti itu, setiap query akan membuka file > eksekusi query (select|insert|update|delete) > file ditutup.
+
+LaciDB tidak cocok untuk:
+
+* Menyimpan database dengan ukuran yang besar.
+* Menyimpan database yang membutuhkan keamanan tingkat tinggi.
+
+LaciDB dibuat untuk:
+
+* Menangani data-data yang kecil seperti pengaturan, atau data-data kecil lain.
+* Backup dan import data lebih mudah. Bagi hosting yang mendukung git, kamu cukup melakukan push untuk backup, dan pull kalau mau import dari komputer lokal ke komputer server (atau sebaliknya).
+
+## Cara Kerja
+
+TODOC
+
 ## Examples
 
 #### Initialize
