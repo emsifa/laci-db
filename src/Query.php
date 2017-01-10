@@ -310,19 +310,25 @@ class Query
         return max($this->lists($key));
     }
 
-    public function withOne(Collection $collection, $as, $otherKey, $operator = '=', $thisKey = '_id')
+    public function withOne($relation, $as, $otherKey, $operator = '=', $thisKey = '_id')
     {
-        return $this->map(function($row) use ($collection, $as, $otherKey, $operator, $thisKey) {
-            $otherData = $collection->where($otherKey, $operator, $row[$thisKey])->first();
+        if (false == $relation instanceof Query AND false == $relation instanceof Collection) {
+            throw new \InvalidArgumentException("Relation must be instanceof Query or Collection", 1);
+        }
+        return $this->map(function($row) use ($relation, $as, $otherKey, $operator, $thisKey) {
+            $otherData = $relation->where($otherKey, $operator, $row[$thisKey])->first();
             $row[$as] = $otherData;
             return $row;
-        }); 
+        });
     }
 
-    public function withMany(Collection $collection, $as, $otherKey, $operator = '=', $thisKey = '_id')
+    public function withMany($relation, $as, $otherKey, $operator = '=', $thisKey = '_id')
     {
-        return $this->map(function($row) use ($collection, $as, $otherKey, $operator, $thisKey) {
-            $otherData = $collection->where($otherKey, $operator, $row[$thisKey])->get();
+        if (false !== $relation instanceof Query AND false == $relation instanceof Collection) {
+            throw new \InvalidArgumentException("Relation must be instanceof Query or Collection", 1);
+        }
+        return $this->map(function($row) use ($relation, $as, $otherKey, $operator, $thisKey) {
+            $otherData = $relation->where($otherKey, $operator, $row[$thisKey])->get();
             $row[$as] = $otherData;
             return $row;
         }); 

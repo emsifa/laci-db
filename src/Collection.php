@@ -221,6 +221,16 @@ class Collection
         return $this->query()->delete();
     }
 
+    public function withOne($relation, $as, $otherKey, $operator = '=', $thisKey = null)
+    {
+        return $this->query()->withOne($relation, $as, $otherKey, $operator, $thisKey ?: static::KEY_ID);
+    }
+
+    public function withMany($relation, $as, $otherKey, $operator = '=', $thisKey = null)
+    {
+        return $this->query()->withMany($relation, $as, $otherKey, $operator, $thisKey ?: static::KEY_ID);
+    }
+
     public function generateKey()
     {
         return uniqid();

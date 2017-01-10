@@ -451,7 +451,7 @@ class CollectionTest extends PHPUnit_Framework_TestCase
 
     public function testWithOne()
     {
-        $result = $this->db->query()->withOne($this->db, 'other', 'email', '=', 'email')->first();
+        $result = $this->db->withOne($this->db, 'other', 'email', '=', 'email')->first();
         $this->assertEquals($result, [
             "_id" => "58745c13ad585",
             "email" => "a@site.com",
@@ -468,7 +468,7 @@ class CollectionTest extends PHPUnit_Framework_TestCase
 
     public function testWithMany()
     {
-        $result = $this->db->query()->withMany($this->db, 'other', 'email', '=', 'email')->first();
+        $result = $this->db->withMany($this->db, 'other', 'email', '=', 'email')->first();
         $this->assertEquals($result, [
             "_id" => "58745c13ad585",
             "email" => "a@site.com",
