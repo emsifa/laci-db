@@ -2,6 +2,9 @@
 LaciDB - Flat File JSON DBMS
 ======================================
 
+[![Build Status](https://img.shields.io/travis/emsifa/laci-db.svg?style=flat-square)](https://travis-ci.org/emsifa/laci-db)
+[![License](http://img.shields.io/:license-mit-blue.svg?style=flat-square)](http://doge.mit-license.org)
+
 ## Examples
 
 #### Initialize
