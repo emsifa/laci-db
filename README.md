@@ -253,8 +253,8 @@ $bookCollection->where('star', '>', 3)->where('author.name', 'Jane Doe')->get();
 $bookCollection->where('star', '>', 3)->orWhere('author.name', 'Jane Doe')->get();
 
 // select * from books.json where (star > 3 OR author[name] = Jane Doe)
-$bookCollection->where(function($row) {
-    return $row['star'] > 3 OR $row['author.name'] == 'Jane Doe';
+$bookCollection->where(function($book) {
+    return $book['star'] > 3 OR $book['author.name'] == 'Jane Doe';
 })->get();
 ```
 
