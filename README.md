@@ -240,39 +240,37 @@ $bookCollection->inserts([
 #### Find Where
 
 ```php
-// select * from book.json where author[name] = 'Jane Doe'
+// select * from books.json where author[name] = 'Jane Doe'
 $bookCollection->where('author.name', 'Jane Doe')->get();
 
-// select * from book.json where star > 3
+// select * from books.json where star > 3
 $bookCollection->where('star', '>', 3)->get();
 
-// select * from book.json where star > 3 AND author[name] = Jane Doe
+// select * from books.json where star > 3 AND author[name] = Jane Doe
 $bookCollection->where('star', '>', 3)->where('author.name', 'Jane Doe')->get();
-```
 
-> Operator can be '=', '<', '<=', '>', '>=', 'in', 'not in', 'between', 'match'.
+// select * from books.json where star > 3 OR author[name] = Jane Doe
+$bookCollection->where('star', '>', 3)->orWhere('author.name', 'Jane Doe')->get();
 
-#### Mengimplementasikan `OR` Menggunakan Filter
-
-```php
-$bookCollection->filter(function($row) {
+// select * from books.json where (star > 3 OR author[name] = Jane Doe)
+$bookCollection->where(function($row) {
     return $row['star'] > 3 OR $row['author.name'] == 'Jane Doe';
 })->get();
 ```
 
-> `$row['author.name']` is equivalent with `$row['author']['name']`
+> Operator can be '=', '<', '<=', '>', '>=', 'in', 'not in', 'between', 'match'.
 
 #### Mengambil Kolom/Key Tertentu
 
 ```php
-// select author, title from book.json where star > 3
+// select author, title from books.json where star > 3
 $bookCollection->where('star', '>', 3)->get(['author.name', 'title']);
 ```
 
 #### Alias Kolom/Key
 
 ```php
-// select author[name] as author_name, title from book.json where star > 3
+// select author[name] as author_name, title from books.json where star > 3
 $bookCollection->where('star', '>', 3)->get(['author.name:author_name', 'title']);
 ```
 
@@ -290,10 +288,10 @@ $bookCollection->map(function($row) {
 #### Sorting
 
 ```php
-// select * from book.json order by star asc
+// select * from books.json order by star asc
 $bookCollection->sortBy('star')->get();
 
-// select * from book.json order by star desc
+// select * from books.json order by star desc
 $bookCollection->sortBy('star', 'desc')->get();
 
 // custom sorting 
@@ -305,10 +303,10 @@ $bookCollection->sort(function($a, $b) {
 #### Limit & Offset
 
 ```php
-// select * from book.json offset 4
+// select * from books.json offset 4
 $bookCollection->skip(4)->get();
 
-// select * from book.json limit 10 offset 4
+// select * from books.json limit 10 offset 4
 $bookCollection->take(10, 4)->get();
 ```
 
