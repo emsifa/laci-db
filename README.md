@@ -11,7 +11,7 @@ LaciDB adalah flat file DBMS dengan format penyimpanan berupa JSON. Karena forma
 
 Dalam LaciDB tidak ada istilah table, yang ada adalah collection. Collection pada LaciDB mewakili sebuah file yang menyimpan banyak records (dalam format JSON).
 
-Nama 'Laci' sendiri diambil karena sifat dan prosesnya seperti laci pada meja/lemari. Laci pada meja/lemari umumnya tidak membutuhkan kunci (autentikasi), cukup buka > ambil sesuatu dan|atau taruh sesuatu > tutup. Pada LaciDB pun seperti itu, setiap query akan membuka file > eksekusi query (select|insert|update|delete) > file ditutup. Laci juga seperti yang kita ketahui adalah tempat untuk menaruh barang-barang kecil. Bukan barang-barang besar seperti lemari.
+Nama 'Laci' sendiri diambil karena sifat dan prosesnya seperti laci pada meja/lemari. Laci pada meja/lemari umumnya tidak membutuhkan kunci (autentikasi), cukup buka > ambil sesuatu dan|atau taruh sesuatu > tutup. Pada LaciDB pun seperti itu, setiap query akan membuka file > eksekusi query (select|insert|update|delete) > file ditutup. Laci juga seperti yang kita ketahui adalah tempat untuk menaruh barang-barang kecil. Bukan barang-barang besar seperti gudang atau lemari.
 
 Untuk itu LaciDB bukan untuk:
 
