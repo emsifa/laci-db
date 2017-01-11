@@ -3,6 +3,11 @@
 namespace Emsifa\Laci;
 
 use Closure;
+use Emsifa\Laci\Pipes\FilterPipe;
+use Emsifa\Laci\Pipes\LimiterPipe;
+use Emsifa\Laci\Pipes\MapperPipe;
+use Emsifa\Laci\Pipes\PipeInterface;
+use Emsifa\Laci\Pipes\SorterPipe;
 
 class Query
 {
@@ -15,9 +20,7 @@ class Query
 
     protected $collection;
 
-    protected $hasExecuted = false;
-
-    protected $data = null;
+    protected $pipes = [];
 
     public function __construct(Collection $collection)
     {
@@ -34,16 +37,25 @@ class Query
         $this->collection = $collection;
     }
 
-    public function hasExecuted()
-    {
-        return true === $this->hasExecuted;
+    public function where($filter)
+    {   
+        $args = func_get_args();
+        array_unshift($args, 'AND');
+        call_user_func_array([$this, 'addWhere'], $args);
+        return $this;
     }
 
-    public function all()
+    public function orWhere($filter)
+    {   
+        $args = func_get_args();
+        array_unshift($args, 'OR');
+        return call_user_func_array([$this, 'addWhere'], $args);
+    }
+
+    public function map(Closure $mapper)
     {
-        $data = $this->getCollection()->loadData();
-        $this->hasExecuted = true;
-        return $data;
+        $this->addMapper($mapper);
+        return $this;
     }
 
     public function select(array $columns)
@@ -79,15 +91,172 @@ class Query
         });
     }
 
-    public function where($key, $operatorOrValue)
+    public function withOne($relation, $as, $otherKey, $operator = '=', $thisKey = '_id')
     {
+        if (false == $relation instanceof Query AND false == $relation instanceof Collection) {
+            throw new \InvalidArgumentException("Relation must be instanceof Query or Collection", 1);
+        }
+        return $this->map(function($row) use ($relation, $as, $otherKey, $operator, $thisKey) {
+            $otherData = $relation->where($otherKey, $operator, $row[$thisKey])->first();
+            $row[$as] = $otherData;
+            return $row;
+        });
+    }
+
+    public function withMany($relation, $as, $otherKey, $operator = '=', $thisKey = '_id')
+    {
+        if (false !== $relation instanceof Query AND false == $relation instanceof Collection) {
+            throw new \InvalidArgumentException("Relation must be instanceof Query or Collection", 1);
+        }
+        return $this->map(function($row) use ($relation, $as, $otherKey, $operator, $thisKey) {
+            $otherData = $relation->where($otherKey, $operator, $row[$thisKey])->get();
+            $row[$as] = $otherData;
+            return $row;
+        }); 
+    }
+
+    public function sortBy($key, $asc = 'asc')
+    {
+        $asc = strtolower($asc);
+        if (!in_array($asc, ['asc', 'desc'])) {
+            throw new \InvalidArgumentException("Ascending must be 'asc' or 'desc'", 1);
+        }
+
+        return $this->sort(function($a, $b) use ($key, $asc) {
+            $valueA = $a[$key];
+            $valueB = $b[$key];
+            if ('asc' == $asc) {
+                return $valueA < $valueB ? -1 : 1;
+            } else {
+                return $valueA > $valueB ? -1 : 1;
+            }
+        });
+    }
+
+    public function sort(Closure $comparator)
+    {
+        $this->addSorter($comparator);
+        return $this;
+    }
+
+    public function skip($offset)
+    {
+        $this->getLimiter()->setOffset($offset);
+        return $this;
+    }
+
+    public function take($limit, $offset = null)
+    {
+        $this->getLimiter()->setLimit($limit)->setOffset($offset);
+        return $this;
+    }
+
+    public function get(array $select = [])
+    {
+        if (!empty($select)) {
+            $this->select($select);
+        }
+        return $this->execute(self::TYPE_GET);
+    }
+
+    public function first(array $select = array())
+    {
+        $data = $this->take(1)->get($select);
+        return array_shift($data);
+    }
+
+    public function update(array $new)
+    {
+        return $this->execute(self::TYPE_UPDATE, $new);
+    }
+
+    public function delete()
+    {
+        return $this->execute(self::TYPE_DELETE);
+    }
+
+    public function save()
+    {
+        return $this->execute(self::TYPE_SAVE);
+    }
+
+    public function count()
+    {
+        return count($this->get());
+    }
+
+    public function sum($key)
+    {
+        $sum = 0;
+        foreach($this->get() as $data) {
+            $data = new ArrayExtra($data);
+            $sum += $data[$key];
+        }
+        return $sum;
+    }
+
+    public function avg($key)
+    {
+        $sum = 0; 
+        $count = 0;
+        foreach($this->get() as $data) {
+            $data = new ArrayExtra($data);
+            $sum += $data[$key];
+            $count++;
+        }
+        return $sum / $count;
+    }
+
+    public function lists($key, $resultKey = null)
+    {
+        $result = [];
+        foreach($this->get() as $i => $data) {
+            $data = new ArrayExtra($data);
+            $k = $resultKey ? $data[$resultKey] : $i;
+            $result[$k] = $data[$key];
+        }
+        return $result;
+    }
+
+    public function pluck($key, $resultKey = null)
+    {
+        return $this->lists($key, $resultKey);
+    }
+
+    public function min($key)
+    {
+        return min($this->lists($key));
+    }
+
+    public function max($key)
+    {
+        return max($this->lists($key));
+    }
+
+    public function getPipes()
+    {
+        return $this->pipes;
+    }
+
+    protected function execute($type, $arg = null)
+    {
+        return $this->getCollection()->execute($this, $type, $arg);
+    }
+
+    protected function addWhere($type, $filter)
+    {
+        if ($filter instanceof Closure) {
+            return $this->addFilter($filter, $type);
+        }
+
         $args = func_get_args();
-        if (count($args) > 2) {
-            $operator = $operatorOrValue;
-            $value = $args[2];
+        $key = $args[1];
+        if (count($args) > 3) {
+            $operator = $args[2];
+            $value = $args[3];
         } else {
             $operator = '=';
-            $value = $operatorOrValue;
+            $value = $args[2];
         }
 
         switch($operator) {
@@ -146,59 +315,41 @@ class Query
             throw new \InvalidArgumentException("Operator {$operator} is not available");
         }
 
-        return $this->filter($filter);
+        $this->addFilter($filter, $type);
     }
 
-    public function skip($offset)
+    protected function addFilter(Closure $filter, $type = 'AND')
     {
-        $data = $this->data();
-        $limit = count($data);
-        $this->data = array_slice($data, $offset, $limit);
-        return $this;
-    }
-
-    public function take($limit, $offset = 0)
-    {
-        $this->data = array_slice($this->data(), $offset, $limit);
-        return $this;
-    }
-
-    public function sortBy($key, $asc = 'asc')
-    {
-        $asc = strtolower($asc);
-        if (!in_array($asc, ['asc', 'desc'])) {
-            throw new \InvalidArgumentException("Ascending must be 'asc' or 'desc'", 1);
+        $lastPipe = $this->getLastPipe();
+        if (false == $lastPipe instanceof FilterPipe) {
+            $pipe = new FilterPipe($this);
+            $this->addPipe($pipe);
+        } else {
+            $pipe = $lastPipe;
         }
 
-        return $this->sort(function($a, $b) use ($key, $asc) {
-            $valueA = $a[$key];
-            $valueB = $b[$key];
-            if ('asc' == $asc) {
-                return $valueA < $valueB ? -1 : 1;
-            } else {
-                return $valueA > $valueB ? -1 : 1;
-            }
-        });
+        $newFilter = function($row) use ($filter) {
+            $row = new ArrayExtra($row);
+            return $filter($row);
+        };
+
+        $pipe->add($newFilter, $type);
     }
 
-    public function sort(Closure $comparator)
+    protected function addMapper(Closure $mapper)
     {
-        $data = $this->data();
-        uasort($data, function($a, $b) use ($comparator) {
-            $a = new ArrayExtra($a);
-            $b = new ArrayExtra($b);
-            return $comparator($a, $b);
-        });
-        $this->data = $data;
-        return $this;
-    }
+        $lastPipe = $this->getLastPipe();
+        if (false == $lastPipe instanceof MapperPipe) {
+            $pipe = new MapperPipe($this);
+            $this->addPipe($pipe);
+        } else {
+            $pipe = $lastPipe;
+        }
 
-    public function map(Closure $mapper)
-    {
         $keyId = $this->getCollection()->getKeyId();
         $keyOldId = $this->getCollection()->getKeyOldId();
 
-        $this->data = array_map(function($row) use ($mapper, $keyId, $keyOldId) {
+        $newMapper = function($row) use ($mapper, $keyId, $keyOldId) {
             $row = new ArrayExtra($row);
             $result = $mapper($row);
             
@@ -217,133 +368,44 @@ class Query
             }
 
             return $new;
-        }, $this->data());
+        };
 
-        return $this;
+        $pipe->add($newMapper);
     }
 
-    public function filter(Closure $filter)
+    protected function addSorter(Closure $comparator)
     {
-        $this->data = array_filter($this->data(), function($row) use ($filter) {
-            $row = new ArrayExtra($row);
-            return $filter($row);
-        });
-        return $this;
+        $newComparator = function($a, $b) use ($comparator) {
+            $a = new ArrayExtra($a);
+            $b = new ArrayExtra($b);
+            return $comparator($a, $b);
+        };
+
+        $pipe = new SorterPipe($newComparator);
+        $this->addPipe($pipe);
     }
 
-    public function get(array $select = [])
+    protected function getLimiter()
     {
-        if (!empty($select)) {
-            $this->select($select);
+        $lastPipe = $this->getLastPipe();
+        if (false == $lastPipe instanceof LimiterPipe) {
+            $limiter = new LimiterPipe;
+            $this->addPipe($limiter);
+        } else {
+            $limiter = $lastPipe;
         }
-        return $this->getCollection()->execute($this, self::TYPE_GET);
+
+        return $limiter;
     }
 
-    public function first(array $select = array())
+    protected function addPipe(PipeInterface $pipe)
     {
-        $data = $this->take(1)->get($select);
-        return array_shift($data);
+        $this->pipes[] = $pipe;
     }
 
-    public function update(array $new)
+    protected function getLastPipe()
     {
-        return $this->getCollection()->execute($this, self::TYPE_UPDATE, $new);
-    }
-
-    public function delete()
-    {
-        return $this->getCollection()->execute($this, self::TYPE_DELETE);
-    }
-
-    public function save()
-    {
-        return $this->getCollection()->execute($this, self::TYPE_SAVE);
-    }
-
-    public function count()
-    {
-        return count($this->get());
-    }
-
-    public function sum($key)
-    {
-        $sum = 0;
-        foreach($this->get() as $data) {
-            $data = new ArrayExtra($data);
-            $sum += $data[$key];
-        }
-        return $sum;
-    }
-
-    public function avg($key)
-    {
-        $sum = 0; 
-        $count = 0;
-        foreach($this->get() as $data) {
-            $data = new ArrayExtra($data);
-            $sum += $data[$key];
-            $count++;
-        }
-        return $sum / $count;
-    }
-
-    public function lists($key, $resultKey = null)
-    {
-        $result = [];
-        foreach($this->get() as $i => $data) {
-            $data = new ArrayExtra($data);
-            $k = $resultKey ? $data[$resultKey] : $i;
-            $result[$k] = $data[$key];
-        }
-        return $result;
-    }
-
-    public function pluck($key, $resultKey = null)
-    {
-        return $this->lists($key, $resultKey);
-    }
-
-    public function min($key)
-    {
-        return min($this->lists($key));
-    }
-
-    public function max($key)
-    {
-        return max($this->lists($key));
-    }
-
-    public function withOne($relation, $as, $otherKey, $operator = '=', $thisKey = '_id')
-    {
-        if (false == $relation instanceof Query AND false == $relation instanceof Collection) {
-            throw new \InvalidArgumentException("Relation must be instanceof Query or Collection", 1);
-        }
-        return $this->map(function($row) use ($relation, $as, $otherKey, $operator, $thisKey) {
-            $otherData = $relation->where($otherKey, $operator, $row[$thisKey])->first();
-            $row[$as] = $otherData;
-            return $row;
-        });
-    }
-
-    public function withMany($relation, $as, $otherKey, $operator = '=', $thisKey = '_id')
-    {
-        if (false !== $relation instanceof Query AND false == $relation instanceof Collection) {
-            throw new \InvalidArgumentException("Relation must be instanceof Query or Collection", 1);
-        }
-        return $this->map(function($row) use ($relation, $as, $otherKey, $operator, $thisKey) {
-            $otherData = $relation->where($otherKey, $operator, $row[$thisKey])->get();
-            $row[$as] = $otherData;
-            return $row;
-        }); 
-    }
-
-    public function data()
-    {
-        if (is_null($this->data)) {
-            $data = $this->getCollection()->loadData();
-            $this->data = $data;
-        }
-        return $this->data;
+        return !empty($this->pipes)? $this->pipes[count($this->pipes) - 1] : null;
     }
 
 }

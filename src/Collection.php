@@ -22,8 +22,6 @@ class Collection
 
     protected $filepath = null;
 
-    protected $query = null;
-
     protected $resolver = null;
 
     protected $events = [];
@@ -125,14 +123,10 @@ class Collection
 
     public function query()
     {
-        if (!$this->query) {
-            $this->query = new Query($this);
-        }
-
-        return $this->query;
+        return new Query($this);
     }
 
-    public function where($key, $operatorOrValue)
+    public function where($key)
     {
         return call_user_func_array([$this->query(), 'where'], func_get_args());
     }
@@ -252,8 +246,6 @@ class Collection
             throw new \InvalidArgumentException("Cannot execute query. Query is for different collection");
         }
 
-        $this->query = null;
-
         switch ($type) {
             case Query::TYPE_GET: return $this->executeGet($query);
             case Query::TYPE_SAVE: return $this->executeSave($query);
@@ -261,6 +253,15 @@ class Collection
             case Query::TYPE_UPDATE: return $this->executeUpdate($query, $arg);
             case Query::TYPE_DELETE: return $this->executeDelete($query);
         }
+    }
+
+    protected function executePipes(array $pipes)
+    {
+        $data = $this->loadData() ?: [];
+        foreach($pipes as $pipe) {
+            $data = $pipe->process($data);
+        }
+        return $data;
     }
 
     protected function executeInsert(Query $query, array $new)
@@ -295,7 +296,8 @@ class Collection
         $args = [$query, $new];
         $this->trigger(static::UPDATING, $args);
         
-        $rows = $query->data();
+        $pipes = $query->getPipes();
+        $rows = $this->executePipes($pipes);
         $count = count($rows);
         if (0 == $count) {
             return true;
@@ -333,7 +335,8 @@ class Collection
         $args = [$query];
         $this->trigger(static::DELETING, $args);
 
-        $rows = $query->data();
+        $pipes = $query->getPipes();
+        $rows = $this->executePipes($pipes);
         $count = count($rows);
         if (0 == $count) {
             return true;
@@ -356,13 +359,16 @@ class Collection
 
     protected function executeGet(Query $query)
     {
-        return array_values($query->data());
+        $pipes = $query->getPipes();
+        $data = $this->executePipes($pipes);
+        return array_values($data);
     }
 
     protected function executeSave(Query $query)
     {
         $data = $this->loadData();
-        $processed = $query->data();
+        $pipes = $query->getPipes();
+        $processed = $this->executePipes($pipes);
         $count = count($processed);
 
         foreach($processed as $key => $row) {

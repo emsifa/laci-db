@@ -73,7 +73,7 @@ class CollectionTest extends PHPUnit_Framework_TestCase
 
     public function testFilter()
     {
-        $result = $this->db->filter(function($row) {
+        $result = $this->db->where(function($row) {
             return $row['score'] > 90;
         })->get();
 

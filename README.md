@@ -25,40 +25,17 @@ LaciDB dibuat untuk:
 
 ## Cara Kerja
 
-Pada dasarnya LaciDB hanyalah tentang manipulasi array. Alur LaciDB pada setiap query umumnya adalah sebagai berikut:
+Cara kerja LaciDB pada dasarnya hanyalah mengalirkan array hasil `json_decode` kedalam 'pipa-pipa' yang berfungsi sebagai *filtering*, *mapping*, *sorting*, *limiting* sampai akhirnya hasilnya akan di eksekusi untuk diambil nilainya, diubah nilainya atau dibuang (baca: dihapus).
 
-* Mengambil konten (JSON) dari file (`file_get_contents`)
-* Parsing JSON tersebut menjadi Array (`json_decode`)
-* Filtering: memfilter array (`array_filter` atau `array_slice`)
-* Mapping: membentuk array (`array_map`)
-* Sorting: mengurutkan hasil (`uasort`)
-* Executing: query di eksekusi berdasarkan jenis querynya (get|insert|update|delete).
-
-Berikut lebih detail terkait beberapa prosesnya:
+Berikut penjelasan terkait prosesnya:
 
 ### Filtering
 
-Berikut beberapa method untuk filter collection:
-
-#### `filter(Closure $filter)`
-
-Untuk filter collection.
-
-#### `where($key, $operator, $value)`
-
-Untuk filter collection berdasarkan kondisi tertentu. Operator dapat berupa '=', '<', '<=', '>', '>=', 'in', 'not in', 'betwenn', dan 'match'. 
-
-Jika `$value` tidak didefinisikan, maka `$operator` dianggap sebagai value, dan operator yang digunakan adalah `=`. 
-
-#### `skip($offset)`
-
-Untuk filter collection pada offset tertentu.
-
-#### `take($limit, $offset = 0)`
-
-Untuk mengambil collection sebanyak `$limit` dimulai pada offset `$offset`.
+Untuk melakukan filtering kamu dapat menggunakan method `where` dan `orWhere`. Ke2 method tersebut dapat menerima parameter `Closure` atau beberapa parameter `key, operator, value`.
 
 ### Mapping
+
+Mapping digunakan untuk membentuk nilai yang baru pada setiap record yang telah difilter.
 
 Berikut beberapa method untuk mapping record:
 
@@ -78,41 +55,51 @@ Untuk mengambil relasi 1:1.
 
 Untuk mengambil relasi 1:n.
 
+### Sorting
+
+Sorting digunakan untuk mengurutkan data yang telah difilter dan dimapping. Untuk melakukan sorting kamu dapat menggunakan method `sortBy($key, $ascending)` atau `sort(Closure $sorter)`. Sorting pada LaciDB sendiri menggunakan `uasort`.
+
+### Limiting/Taking
+
+Setelah data selesai difilter, dimapping, dan disorting, kamu dapat memotong dan mengambil sebagian data dengan method `skip($offset)` atau `take($limit, $offset)`.
+
 ### Executing
+
+Setelah difilter, dimapping, disorting, dan disisihkan, langkah selanjutnya adalah ekseskusi hasilnya.
 
 Berikut beberapa method untuk executing:
 
 #### `get(array $columns = null)`
 
-Mengambil kumpulan records pada collection yang telah di filter dan di mapping. Jika ingin mengambil kolom tertentu definisikan kolom kedalam array `$columns`.
+Mengambil kumpulan records pada collection. Jika ingin mengambil kolom tertentu definisikan kolom kedalam array `$columns`.
 
 #### `first(array $columns = null)`
 
-Mengambil (sebuah) record pada collection yang telah difilter dan di mapping. Jika ingin mengambil kolom tertentu definisikan kolom kedalam array `$columns`.
+Mengambil (sebuah) record pada collection. Jika ingin mengambil kolom tertentu definisikan kolom kedalam array `$columns`.
 
 #### `count()` 
 
-Mengambil banyak data dari collection yang telah difilter dan dimapping.
+Mengambil banyak data dari collection.
 
 #### `sum($key)` 
 
-Mengambil total key tertentu pada collection yang telah difilter dan dimapping.
+Mengambil total key tertentu pada collection.
 
 #### `avg($key)` 
 
-Mengambil rata-rata key tertentu pada collection yang telah difilter dan dimapping.
+Mengambil rata-rata key tertentu pada collection.
 
 #### `min($key)` 
 
-Mengambil nilai terendah dari key tertentu pada collection yang telah difilter dan dimapping.
+Mengambil nilai terendah dari key tertentu pada collection.
 
 #### `max($key)` 
 
-Mengambil nilai tertinggi dari key tertentu pada collection yang telah difilter dan dimapping.
+Mengambil nilai tertinggi dari key tertentu pada collection.
 
 #### `lists($key, $resultKey = null)` 
 
-Mengumpulkan dan mengambil key tertentu kedalam array pada collection yang telah difilter dan dimapping.
+Mengumpulkan dan mengambil key tertentu kedalam array pada collection.
 
 #### `insert(array $data)` 
 
