@@ -11,9 +11,9 @@ LaciDB adalah flat file DBMS dengan format penyimpanan berupa JSON. Karena forma
 
 Dalam LaciDB tidak ada istilah table, yang ada adalah collection. Collection pada LaciDB mewakili sebuah file yang menyimpan banyak records (dalam format JSON).
 
-Nama 'Laci' sendiri diambil karena prosesnya seperti laci pada meja/lemari. Laci pada meja/lemari umumnya tidak membutuhkan kunci (autentikasi), cukup buka > ambil sesuatu dan|atau taruh sesuatu > tutup. Pada LaciDB pun seperti itu, setiap query akan membuka file > eksekusi query (select|insert|update|delete) > file ditutup.
+Nama 'Laci' sendiri diambil karena sifat dan prosesnya seperti laci pada meja/lemari. Laci pada meja/lemari umumnya tidak membutuhkan kunci (autentikasi), cukup buka > ambil sesuatu dan|atau taruh sesuatu > tutup. Pada LaciDB pun seperti itu, setiap query akan membuka file > eksekusi query (select|insert|update|delete) > file ditutup. Laci juga seperti yang kita ketahui adalah tempat untuk menaruh barang-barang kecil. Bukan barang-barang besar seperti lemari.
 
-LaciDB tidak cocok untuk:
+Untuk itu LaciDB bukan untuk:
 
 * Menyimpan database dengan ukuran yang besar.
 * Menyimpan database yang membutuhkan keamanan tingkat tinggi.
@@ -21,7 +21,8 @@ LaciDB tidak cocok untuk:
 LaciDB dibuat untuk:
 
 * Menangani data-data yang kecil seperti pengaturan, atau data-data kecil lain.
-* Backup dan import data lebih mudah. Bagi hosting yang mendukung git, kamu cukup melakukan push untuk backup, dan pull kalau mau import dari komputer lokal ke komputer server (atau sebaliknya).
+* Untuk kalian yang menginginkan database portable yang mudah untuk diimport/export dan backup.
+* Untuk kalian yang menginginkan database yang mudah diedit sendiri tanpa menggunakan software khusus. Notepad pun bisa.
 
 ## Cara Kerja
 
