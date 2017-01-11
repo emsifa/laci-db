@@ -231,6 +231,25 @@ class CollectionTest extends PHPUnit_Framework_TestCase
         ]);
     }
 
+    public function testGetOrWhere()
+    {
+        $result = $this->db->where('name', 'C')->orWhere('name', 'B')->get();
+        $this->assertEquals($result, [
+            [
+                "_id" => "58745c19b4c51",
+                "email" => "b@site.com",
+                "name" => "B",
+                "score" => 76
+            ],
+            [
+                "_id" => "58745c1ef0b13",
+                "email" => "c@site.com",
+                "name" => "C",
+                "score" => 95
+            ]
+        ]);
+    }
+
     public function testGetWhereBiggerThan()
     {
         $result = $this->db->where('score', '>', 80)->get();

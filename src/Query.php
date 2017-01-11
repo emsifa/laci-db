@@ -49,7 +49,8 @@ class Query
     {   
         $args = func_get_args();
         array_unshift($args, 'OR');
-        return call_user_func_array([$this, 'addWhere'], $args);
+        call_user_func_array([$this, 'addWhere'], $args);
+        return $this;
     }
 
     public function map(Closure $mapper)
