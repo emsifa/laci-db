@@ -146,9 +146,9 @@ class Collection
         return $this->query()->sortBy($key, $asc);
     }
 
-    public function sort(Closure $comparator)
+    public function sort(Closure $value)
     {
-        return $this->query()->sort($comparator);
+        return $this->query()->sort($value);
     }
 
     public function skip($offset)
@@ -168,7 +168,8 @@ class Collection
 
     public function find($id)
     {
-        return $this->where(static::KEY_ID, $id)->first();
+        $data = $this->loadData();
+        return isset($data[$id])? $data[$id] : null;
     }
 
     public function lists($key, $resultKey = null)

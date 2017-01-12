@@ -58,7 +58,7 @@ Untuk mengambil relasi 1:n.
 
 ### Sorting
 
-Sorting digunakan untuk mengurutkan data yang telah difilter dan dimapping. Untuk melakukan sorting kamu dapat menggunakan method `sortBy($key, $ascending)` atau `sort(Closure $sorter)`. Sorting pada LaciDB sendiri menggunakan `uasort`.
+Sorting digunakan untuk mengurutkan data yang telah difilter dan dimapping. Untuk melakukan sorting kamu dapat menggunakan method `sortBy($key, $ascending)`. Parameter `$key` dapat berupa string key/kolom yang ingin diurutkan atau `Closure` jika ingin mengurutkan berdasarkan nilai yang dikomputasi terlebih dahulu.
 
 ### Limiting/Taking
 
@@ -295,10 +295,10 @@ $bookCollection->sortBy('star')->get();
 // select * from books.json order by star desc
 $bookCollection->sortBy('star', 'desc')->get();
 
-// custom sorting 
-$bookCollection->sort(function($a, $b) {
-    return $a['star'] < $b['star'] ? -1 : 1;
-})->get();
+// sorting calculated value
+$bookCollection->sortBy(function($row) {
+    return $row['star'] + $row['views'];
+}, 'desc')->get();
 ```
 
 #### Limit & Offset

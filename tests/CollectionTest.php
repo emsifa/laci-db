@@ -121,7 +121,32 @@ class CollectionTest extends PHPUnit_Framework_TestCase
         ]);   
     }
 
-    public function testSortBy()
+    public function testSortAscending()
+    {
+        $result = $this->db->query()->sortBy('score', 'asc')->get();
+        $this->assertEquals($result, [
+            [
+                "_id" => "58745c19b4c51",
+                "email" => "b@site.com",
+                "name" => "B",
+                "score" => 76
+            ],
+            [
+                "_id" => "58745c13ad585",
+                "email" => "a@site.com",
+                "name" => "A",
+                "score" => 80
+            ],
+            [
+                "_id" => "58745c1ef0b13",
+                "email" => "c@site.com",
+                "name" => "C",
+                "score" => 95
+            ]
+        ]);
+    }
+
+    public function testSortDescending()
     {
         $result = $this->db->query()->sortBy('score', 'desc')->get();
         $this->assertEquals($result, [

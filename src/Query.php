@@ -123,20 +123,17 @@ class Query
             throw new \InvalidArgumentException("Ascending must be 'asc' or 'desc'", 1);
         }
 
-        return $this->sort(function($a, $b) use ($key, $asc) {
-            $valueA = $a[$key];
-            $valueB = $b[$key];
-            if ('asc' == $asc) {
-                return $valueA < $valueB ? -1 : 1;
-            } else {
-                return $valueA > $valueB ? -1 : 1;
-            }
-        });
-    }
+        if ($key instanceof Closure) {
+            $value = $key;
+        } else {
+            $value = function($row) use ($key) {
+                return $row[$key];
+            };
+        }
 
-    public function sort(Closure $comparator)
-    {
-        $this->addSorter($comparator);
+        $this->addSorter(function($row) use ($value) {
+            return $value(new ArrayExtra($row));
+        }, $asc);
         return $this;
     }
 
@@ -374,15 +371,9 @@ class Query
         $pipe->add($newMapper);
     }
 
-    protected function addSorter(Closure $comparator)
+    protected function addSorter(Closure $value, $asc)
     {
-        $newComparator = function($a, $b) use ($comparator) {
-            $a = new ArrayExtra($a);
-            $b = new ArrayExtra($b);
-            return $comparator($a, $b);
-        };
-
-        $pipe = new SorterPipe($newComparator);
+        $pipe = new SorterPipe($value, $asc);
         $this->addPipe($pipe);
     }
 
