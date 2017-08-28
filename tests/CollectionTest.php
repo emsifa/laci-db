@@ -542,6 +542,32 @@ class CollectionTest extends PHPUnit_Framework_TestCase
         ]);
     }
 
+    public function testMoreEntropy()
+    {
+        $db = new Collection($this->filepath, [
+            'more_entropy' => true
+        ]);
+
+        $data = $db->insert([
+            'label' => 'Test more entropy'
+        ]);
+
+        $this->assertEquals(strlen($data['_id']), 23);
+    }
+
+    public function testKeyPrefix()
+    {
+        $db = new Collection($this->filepath, [
+            'key_prefix' => 'foobar'
+        ]);
+
+        $data = $db->insert([
+            'label' => 'Test key prefix'
+        ]);
+
+        $this->assertEquals(substr($data['_id'], 0, 6), "foobar");
+    }
+
     public function tearDown()
     {
         unlink($this->filepath);
