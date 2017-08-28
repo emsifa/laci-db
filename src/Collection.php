@@ -417,7 +417,7 @@ class Collection
                 throw new DirectoryNotFoundException("Cannot save database. Directory {$dir} not found or it is not directory.");
             }
 
-            return file_put_contents($filepath, $json);
+            return file_put_contents($filepath, $json, LOCK_EX);
         }
     }
 }
