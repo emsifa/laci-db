@@ -34,7 +34,9 @@ class Collection
     {
         $this->filepath = $filepath;
         $this->options = array_merge([
-            'save_format' => JSON_PRETTY_PRINT
+            'save_format' => JSON_PRETTY_PRINT,
+            'key_prefix' => '',
+            'more_entropy' => false,
         ], $options);
     }
 
@@ -238,7 +240,7 @@ class Collection
 
     public function generateKey()
     {
-        return uniqid();
+        return uniqid($this->options['key_prefix'], (bool) $this->options['more_entropy']);
     }
 
     public function execute(Query $query, $type, $arg = null)
