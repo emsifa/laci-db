@@ -369,7 +369,7 @@ Jadi untuk mempermudahnya, kita dapat menggunakan macro sebagai berikut:
 ```php
 $users->macro('active', function ($query) {
     return $query->where('active', 1);
-})
+});
 ```
 
 Sehingga kita dapat mengambil user aktif dengan cara seperti ini:
