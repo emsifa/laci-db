@@ -362,7 +362,7 @@ Sebagai contoh kita ingin mengambil data user yang aktif, jika dengan cara biasa
 $users->where('active', 1)->get();
 ```
 
-Cara seperti diatas jika digunakan berulang-ulang, terkadang kita akan bingung mengenali user aktif itu yang nilai `active`-nya `1`, `true`, atau `yes`?
+Cara seperti diatas jika digunakan berulang-ulang, terkadang kita lupa mengenali user aktif itu yang nilai `active`-nya `1`, atau `true`, atau `'yes'`, atau `'YES'`, atau `'yes'`, atau `'y'`, atau `'Y'`, atau `'Ya'`, atau `'ya'`, dsb?
 
 Jadi untuk mempermudahnya, kita dapat menggunakan macro sebagai berikut:
 
