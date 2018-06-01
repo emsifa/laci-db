@@ -400,4 +400,15 @@ class Query
         return !empty($this->pipes)? $this->pipes[count($this->pipes) - 1] : null;
     }
 
+    public function __call($method, $args)
+    {
+        $macro = $this->collection->getMacro($method);
+
+        if ($macro) {
+            return call_user_func_array($macro, array_merge([$this], $args));
+        } else {
+            throw new UndefinedMethodException("Undefined method or macro '{$method}'.");
+        }
+    }
+
 }

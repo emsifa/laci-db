@@ -1,6 +1,7 @@
 <?php
 
 use Emsifa\Laci\Collection;
+use Emsifa\Laci\DB;
 
 class CollectionTest extends PHPUnit_Framework_TestCase
 {
@@ -566,6 +567,91 @@ class CollectionTest extends PHPUnit_Framework_TestCase
         ]);
 
         $this->assertEquals(substr($data['_id'], 0, 6), "foobar");
+    }
+
+    public function testMacro()
+    {
+        // delete current db
+        $this->tearDown();
+
+        $db = new Collection($this->filepath);
+
+        // Register macro
+        $db->macro('replace', function ($query, $key, array $replacers) {
+            $keys = (array) $key;
+            
+            return $query->map(function ($item) use ($keys, $replacers) {
+                foreach ($keys as $key) {
+                    if (isset($item[$key])) {
+                        $item[$key] = str_replace(array_keys($replacers), array_values($replacers), $item[$key]);
+                    }
+                }
+                return $item;
+            });
+        });
+
+        // Insert items
+        foreach (range(1, 10) as $n) {
+            $db->insert([
+                'number' => (string) $n
+            ]);
+        }
+        
+        // Use macro within collection
+        $result = $db->replace('number', [
+                '1' => 'one',
+                '2' => 'two'
+            ])->get();
+
+        $this->assertEquals($result[0]['number'], 'one');
+        $this->assertEquals($result[1]['number'], 'two');
+        $this->assertEquals($result[9]['number'], 'one0');
+
+        // Use macro in query chain
+        $result2 = $db->query()->replace('number', [
+                '1' => 'one',
+                '2' => 'two'
+            ])->get();
+
+        $this->assertEquals($result2[0]['number'], 'one');
+        $this->assertEquals($result2[1]['number'], 'two');
+        $this->assertEquals($result2[9]['number'], 'one0');
+    }
+
+    public function testGlobalMacro()
+    {
+        DB::macro('replace', function ($query, $key, array $replacers) {
+            $keys = (array) $key;
+            
+            return $query->map(function ($item) use ($keys, $replacers) {
+                foreach ($keys as $key) {
+                    if (isset($item[$key])) {
+                        $item[$key] = str_replace(array_keys($replacers), array_values($replacers), $item[$key]);
+                    }
+                }
+                return $item;
+            });
+        });
+
+        $this->tearDown();
+        $db = DB::open($this->filepath);
+
+        
+        // Insert items
+        foreach (range(1, 10) as $n) {
+            $db->insert([
+                'number' => (string) $n
+            ]);
+        }
+
+        $result = $db->replace('number', [
+                '1' => 'one',
+                '2' => 'two'
+            ])->get();
+
+        $this->assertEquals($result[0]['number'], 'one');
+        $this->assertEquals($result[1]['number'], 'two');
+        $this->assertEquals($result[9]['number'], 'one0');
     }
 
     public function tearDown()

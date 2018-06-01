@@ -5,6 +5,7 @@ namespace Emsifa\Laci;
 use Closure;
 use Emsifa\Laci\Exceptions\DirectoryNotFoundException;
 use Emsifa\Laci\Exceptions\InvalidJsonException;
+use Emsifa\Laci\Exceptions\UndefinedMethodException;
 
 class Collection
 {
@@ -30,6 +31,8 @@ class Collection
 
     protected $transactionData = null;
 
+    protected $macros = [];
+
     public function __construct($filepath, array $options = array())
     {
         $this->filepath = $filepath;
@@ -38,6 +41,21 @@ class Collection
             'key_prefix' => '',
             'more_entropy' => false,
         ], $options);
+    }
+
+    public function macro($name, callable $callback)
+    {
+        $this->macros[$name] = $callback;
+    }
+
+    public function hasMacro($name)
+    {
+        return array_key_exists($name, $this->macros);
+    }
+
+    public function getMacro($name)
+    {
+        return $this->hasMacro($name) ? $this->macros[$name] : null;
     }
 
     public function getKeyId()
@@ -422,4 +440,17 @@ class Collection
             return file_put_contents($filepath, $json, LOCK_EX);
         }
     }
+
+
+    public function __call($method, $args)
+    {
+        $macro = $this->getMacro($method);
+
+        if ($macro) {
+            return call_user_func_array($macro, array_merge([$this->query()], $args));
+        } else {
+            throw new UndefinedMethodException("Undefined method or macro '{$method}'.");
+        }
+    }
+
 }
