@@ -7,7 +7,7 @@ LaciDB - Flat File JSON DBMS
 
 ## Overview
 
-LaciDB adalah flat file DBMS dengan format penyimpanan berupa JSON. Karena format JSON, LaciDB bersifat *schemaless* seperti hanya NoSQL lainnya. Sebuah record dapat memiliki kolom yang berbeda-beda.
+LaciDB adalah flat file DBMS dengan format penyimpanan berupa JSON. Karena format JSON, LaciDB bersifat *schemaless* seperti halnya NoSQL lainnya. Sebuah record dapat memiliki kolom yang berbeda-beda.
 
 Dalam LaciDB tidak ada istilah table, yang ada adalah collection. Collection pada LaciDB mewakili sebuah file yang menyimpan banyak records (dalam format JSON).
 
