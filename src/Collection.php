@@ -121,8 +121,7 @@ class Collection
         if (!file_exists($this->filepath)) {
             $data = [];
         } else {
-            $content = file_get_contents($this->filepath);
-            $data = json_decode($content, true);
+            $data = JsonUtil::load($this->filepath);
             if (is_null($data)) {
                 throw new InvalidJsonException("Failed to load data. File '{$this->filepath}' contain invalid JSON format.");
             }
